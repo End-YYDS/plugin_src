@@ -12,11 +12,15 @@ impl LoginPlugin {
     }
 }
 
-declare_plugin!(LoginPlugin, "LoginPlugin","0.1.0", "Login Plugin","/auth",functions:{
-    "/login" => {
-        method: actix_web::web::get(),
-        handler: LoginPlugin::login
+declare_plugin!(
+    LoginPlugin,
+    meta: {"LoginPlugin","0.1.0", "Login Plugin","/auth","sha256:djjdkskkejdjj"},
+    "test.js",
+    functions:{
+        "/login" => {
+            method: actix_web::web::get(),
+            handler: LoginPlugin::login
+        }
     }
-});
-
+);
 register_plugin!(LoginPlugin);
