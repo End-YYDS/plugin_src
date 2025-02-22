@@ -1,0 +1,13 @@
+[package]
+name = "test1_lib"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+actix-web = "4.9.0"
+
+[dependencies.plugin_lib]
+git = "https://github.com/End-YYDS/plugin_lib"
+
+[lib]
+crate-type = ["dylib"]
