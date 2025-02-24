@@ -1,0 +1,83 @@
+name: Build
+on:
+  push:
+    branches:
+    - main
+    paths:
+    - src/**
+    - Cargo.toml
+    - '.github/workflows/build.yml'
+env:
+  PROJECT_NAME: test2_lib
+jobs:
+  build:
+    if: '!contains(github.event.head_commit.message, ''[skip ci]'')'
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      matrix:
+        include:
+        - name: linux-amd64
+          runner: ubuntu-latest
+          target: x86_64-unknown-linux-gnu
+          lib-suffix: '.so'
+        - name: win-amd64
+          runner: windows-latest
+          target: x86_64-pc-windows-msvc
+          lib-suffix: '.dll'
+        - name: macos-amd64
+          runner: macos-latest
+          target: x86_64-apple-darwin
+          lib-suffix: '.dylib'
+        - name: macos-arm64
+          runner: macos-latest
+          target: aarch64-apple-darwin
+          lib-suffix: '.dylib'
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+    - name: Install Rust
+      uses: dtolnay/rust-toolchain@stable
+      with:
+        targets: ${{ matrix.target }}
+    - name: Setup Cache
+      uses: Swatinem/rust-cache@v2
+    - name: Create Dist Directory
+      run: mkdir -p dist
+    - name: Build Library
+      run: cargo build --verbose --locked --release --target ${{ matrix.target }}
+    - name: Prepare Release Binary
+      run: |
+        if [[ "${{ matrix.target }}" == "x86_64-pc-windows-msvc" ]]; then
+            LIB_PREFIX=""
+            LIB_OUTPUT="target/${{ matrix.target }}/release/${PROJECT_NAME}${{ matrix.lib-suffix }}"
+        else
+            LIB_PREFIX="lib"
+            LIB_OUTPUT="target/${{ matrix.target }}/release/${LIB_PREFIX}${PROJECT_NAME}${{ matrix.lib-suffix }}"
+        fi
+        LIB_RELEASE="${PROJECT_NAME}${{ matrix.lib-suffix }}"
+        if [ ! -f "${LIB_OUTPUT}" ]; then
+            echo "Library not found at ${LIB_OUTPUT}"
+            exit 1
+        fi
+        cp "${LIB_OUTPUT}" "./dist/${LIB_RELEASE}"
+        ls -l dist/
+      shell: bash
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '*'
+    - name: Install Yarn
+      run: npm install -g yarn
+    - name: Build Frontend
+      run: |
+        cd src/frontend
+        yarn install --frozen-lockfile
+        yarn build
+    - name: Copy Frontend Build to Dist Directory
+      run: cp -r src/frontend/dist/* dist/
+    - name: Upload Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        path: dist/
+        name: test2_lib-${{ matrix.name }}-library
+        retention-days: 30
